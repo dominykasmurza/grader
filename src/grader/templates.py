@@ -129,33 +129,23 @@ def _part_title_color_hex(part):
     return IBO_GREY_HEX
 
 
-def draw_part_title_pdf(c, part):
-    """Draw the title used to identify Theory Part A/B from the printout.
-
-    Part A is red and Part B is blue using the IBO palette. The final
-    A/B character is larger than the shared "Theory Part " prefix.
-    """
-    resolved_part = normalize_part(part)
-
-    if resolved_part in {"A", "B"}:
-        prefix = "Theory Part "
-        suffix = resolved_part
-        color_hex = _part_title_color_hex(resolved_part)
-
-        c.setFillColorRGB(*_hex_to_rgb01(color_hex))
-        c.setFont(PART_TITLE_FONT_NAME, PART_TITLE_PREFIX_FONT_SIZE_PT)
-        c.drawString(PART_TITLE_X_PT, PART_TITLE_BASELINE_Y_PT, prefix)
-
-        prefix_w = c.stringWidth(prefix, PART_TITLE_FONT_NAME, PART_TITLE_PREFIX_FONT_SIZE_PT)
-        c.setFont(PART_TITLE_FONT_NAME, PART_TITLE_PART_FONT_SIZE_PT)
-        c.drawString(PART_TITLE_X_PT + prefix_w, PART_TITLE_BASELINE_Y_PT, suffix)
+def draw_part_title_pdf(c, label_text):
+    """Draw arbitrary customizable text in the top-left header."""
+    if label_text is None:
         return
 
-    # Fallback for custom/non-standard title strings.
-    label = str(part)
+    label = str(label_text).strip()
+
+    if not label:
+        return
+
     c.setFillColorRGB(*_hex_to_rgb01(IBO_GREY_HEX))
     c.setFont(PART_TITLE_FONT_NAME, PART_TITLE_FONT_SIZE_PT)
-    c.drawString(PART_TITLE_X_PT, PART_TITLE_BASELINE_Y_PT, label)
+    c.drawString(
+        PART_TITLE_X_PT,
+        PART_TITLE_BASELINE_Y_PT,
+        label,
+    )
 
 
 def draw_sheet_header(c, part_title=None, logo_path=None):
