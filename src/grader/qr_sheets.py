@@ -1,7 +1,7 @@
 """Generate QR-encoded answer sheets from a CSV file.
 
-Each non-empty CSV row becomes one page in a single PDF. The QR code is placed
-in the reserved area at the top center of the standard answer sheet.
+Each non-empty CSV row becomes one page in a single PDF. The QR code is
+placed in the reserved area at the top center of the standard answer sheet.
 """
 
 from __future__ import annotations
@@ -26,7 +26,6 @@ from .config import (
     QR_RESERVED_H_PT,
     QR_RESERVED_W_PT,
 )
-from .grading import normalize_part
 from .templates import draw_sheet_page
 
 
@@ -35,7 +34,6 @@ class QRSheetRecord:
     """One answer-sheet page requested by a CSV row."""
 
     qr_text: str
-    part: str | None = None
     label: str | None = None
     sheet_label: str | None = None
 
@@ -71,20 +69,20 @@ def _resolve_column(
             "Could not identify the QR-text column. Use --text-column. "
             f"Available columns: {', '.join(fieldnames)}"
         )
+
     return None
 
 
 def read_qr_sheet_csv(
     csv_path: str | Path,
     text_column: str | None = None,
-    part_column: str | None = None,
     label_column: str | None = None,
     sheet_label_column: str | None = None,
-    default_part: str | None = None,
     default_sheet_label: str | None = None,
     encoding: str = "utf-8-sig",
 ) -> list[QRSheetRecord]:
-    """Read QR payloads and optional page metadata from a CSV file."""
+    """Read QR payloads and optional page labels from a CSV file."""
+
     path = Path(csv_path)
     if not path.exists():
         raise FileNotFoundError(f"CSV file not found: {path}")
@@ -97,17 +95,12 @@ def read_qr_sheet_csv(
             raise ValueError("The CSV file has no header row.")
 
         fields = list(reader.fieldnames)
+
         text_col = _resolve_column(
             fields,
             text_column,
             ("qr_text", "qr", "code", "text", "payload", "student_code"),
             required=True,
-        )
-        part_col = _resolve_column(
-            fields,
-            part_column,
-            ("part", "theory_part", "exam_part"),
-            required=False,
         )
         label_col = _resolve_column(
             fields,
@@ -118,27 +111,32 @@ def read_qr_sheet_csv(
         sheet_label_col = _resolve_column(
             fields,
             sheet_label_column,
-            ("sheet_label", "header", "header_text", "title", "sheet_title"),
+            (
+                "sheet_label",
+                "header",
+                "header_text",
+                "title",
+                "sheet_title",
+                "template_label",
+            ),
             required=False,
         )
 
-        normalized_default_part = normalize_part(default_part)
         normalized_default_sheet_label = (
             str(default_sheet_label).strip() if default_sheet_label else None
         )
 
-        for row_number, row in enumerate(reader, start=2):
+        for row in reader:
             qr_text = str(row.get(text_col, "") or "").strip()
             if not qr_text:
                 continue
 
-            raw_part = row.get(part_col, "") if part_col else ""
-            part = normalize_part(raw_part) or normalized_default_part
-
             raw_label = row.get(label_col, "") if label_col else ""
             label = str(raw_label or "").strip() or None
 
-            raw_sheet_label = row.get(sheet_label_col, "") if sheet_label_col else ""
+            raw_sheet_label = (
+                row.get(sheet_label_col, "") if sheet_label_col else ""
+            )
             sheet_label = (
                 str(raw_sheet_label or "").strip()
                 or normalized_default_sheet_label
@@ -148,7 +146,6 @@ def read_qr_sheet_csv(
             records.append(
                 QRSheetRecord(
                     qr_text=qr_text,
-                    part=part,
                     label=label,
                     sheet_label=sheet_label,
                 )
@@ -169,9 +166,12 @@ def draw_qr_code(
     error_correction: str = "M",
 ) -> None:
     """Draw a vector QR code at the requested PDF coordinates."""
+
     level = str(error_correction).upper()
     if level not in {"L", "M", "Q", "H"}:
-        raise ValueError("QR error correction must be one of L, M, Q, or H.")
+        raise ValueError(
+            "QR error correction must be one of L, M, Q, or H."
+        )
 
     widget = qr.QrCodeWidget(text, barLevel=level)
     x0, y0, x1, y1 = widget.getBounds()
@@ -203,33 +203,44 @@ def generate_qr_answer_sheets(
     print_text: bool = False,
     qr_label_font_size_pt: float = 9.0,
 ) -> int:
-    """Generate one multipage PDF containing one encoded answer sheet per record."""
+    """Generate one multipage PDF containing one sheet per record."""
+
     output_path = Path(output_pdf)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     qr_size_pt = float(qr_size_mm) * MM
     max_size_pt = min(QR_RESERVED_W_PT, QR_RESERVED_H_PT)
+
     if qr_size_pt <= 0 or qr_size_pt > max_size_pt:
         raise ValueError(
-            f"QR size must be greater than 0 and at most "
+            "QR size must be greater than 0 and at most "
             f"{max_size_pt / MM:.1f} mm."
         )
+
+    if qr_label_font_size_pt <= 0:
+        raise ValueError("QR-label font size must be greater than 0.")
 
     items = list(records)
     if not items:
         raise ValueError("At least one QR sheet record is required.")
 
     pdf = canvas.Canvas(str(output_path), pagesize=A4)
-    qr_x = (PDF_W_PT - qr_size_pt) / 2
-    qr_y = PDF_H_PT - MARGIN_Y_PT - (QR_RESERVED_H_PT + qr_size_pt) / 2
 
-    for page_number, record in enumerate(items, start=1):
+    qr_x = (PDF_W_PT - qr_size_pt) / 2
+    qr_y = (
+        PDF_H_PT
+        - MARGIN_Y_PT
+        - (QR_RESERVED_H_PT + qr_size_pt) / 2
+    )
+
+    for record in items:
         draw_sheet_page(
             pdf,
             fill_answers=False,
-            part_title=record.sheet_label or record.part,
+            label_text=record.sheet_label,
             logo_path=logo_path,
         )
+
         draw_qr_code(
             pdf,
             text=record.qr_text,
@@ -244,11 +255,12 @@ def generate_qr_answer_sheets(
             max_chars = 80
             if len(visible_text) > max_chars:
                 visible_text = visible_text[: max_chars - 3] + "..."
+
             pdf.setFillColorRGB(0, 0, 0)
             pdf.setFont("Helvetica", qr_label_font_size_pt)
             pdf.drawCentredString(
                 PDF_W_PT / 2,
-                qr_y - 3.0 * MM,
+                qr_y - 4.0 * MM,
                 visible_text,
             )
 
@@ -262,10 +274,8 @@ def generate_qr_answer_sheets_from_csv(
     csv_path: str | Path,
     output_pdf: str | Path,
     text_column: str | None = None,
-    part_column: str | None = None,
     label_column: str | None = None,
     sheet_label_column: str | None = None,
-    default_part: str | None = None,
     default_sheet_label: str | None = None,
     logo_path: str | None = None,
     qr_size_mm: float = 29.0,
@@ -274,15 +284,15 @@ def generate_qr_answer_sheets_from_csv(
     qr_label_font_size_pt: float = 9.0,
 ) -> int:
     """Read a CSV and generate its QR-encoded answer-sheet PDF."""
+
     records = read_qr_sheet_csv(
         csv_path=csv_path,
         text_column=text_column,
-        part_column=part_column,
         label_column=label_column,
         sheet_label_column=sheet_label_column,
-        default_part=default_part,
         default_sheet_label=default_sheet_label,
     )
+
     return generate_qr_answer_sheets(
         records=records,
         output_pdf=output_pdf,
@@ -297,11 +307,15 @@ def generate_qr_answer_sheets_from_csv(
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate a multipage PDF of QR-encoded grader answer sheets "
-            "from a CSV file."
+            "Generate a multipage PDF of QR-encoded grader answer "
+            "sheets from a CSV file."
         )
     )
-    parser.add_argument("csv_path", help="Input CSV containing one QR payload per row.")
+
+    parser.add_argument(
+        "csv_path",
+        help="Input CSV containing one QR payload per row.",
+    )
     parser.add_argument(
         "output_pdf",
         nargs="?",
@@ -312,25 +326,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--text-column",
         default=None,
         help=(
-            "Column containing the QR payload. Automatically detects common "
-            "names such as qr_text, qr, code, text, payload, and student_code."
+            "Column containing the QR payload. Common names such as "
+            "qr_text, qr, code, text, payload, and student_code are "
+            "detected automatically."
         ),
-    )
-    parser.add_argument(
-        "--part-column",
-        default=None,
-        help="Optional column containing A or B for the answer-sheet title.",
     )
     parser.add_argument(
         "--label-column",
         default=None,
-        help="Optional column used as human-readable text below the QR code.",
+        help="Optional column used as readable text below the QR code.",
     )
     parser.add_argument(
         "--sheet-label-column",
         default=None,
         help=(
-            "Optional CSV column containing the customizable text printed "
+            "Optional CSV column containing customizable text printed "
             "at the top left of each answer sheet."
         ),
     )
@@ -338,32 +348,32 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--default-sheet-label",
         default=None,
         help=(
-            "Default top-left label used when the CSV has no sheet-label "
-            "value, for example 'Final Examination'."
+            "Default top-left label used when a row has no sheet-label "
+            "value."
         ),
-    )
-    parser.add_argument(
-        "--default-part",
-        choices=["A", "B"],
-        default=None,
-        help="Part used when the CSV has no part value.",
     )
     parser.add_argument(
         "--logo-path",
         default=None,
-        help="Optional logo image placed next to the top-right ArUco marker.",
+        help="Optional logo image placed near the top-right marker.",
     )
     parser.add_argument(
         "--qr-size-mm",
         type=float,
         default=29.0,
-        help="QR-code width and height in millimetres. Maximum: 30. Default: 29.",
+        help=(
+            "QR-code width and height in millimetres. "
+            "Maximum: 30. Default: 29."
+        ),
     )
     parser.add_argument(
         "--qr-label-font-size",
         type=float,
         default=9.0,
-        help="Font size in points for text below the QR code. Default: 9.",
+        help=(
+            "Font size in points for readable text below the QR code. "
+            "Default: 9."
+        ),
     )
     parser.add_argument(
         "--error-correction",
@@ -374,21 +384,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--print-text",
         action="store_true",
-        help="Print the label or QR payload in small text below the code.",
+        help="Print the label or QR payload below the code.",
     )
+
     return parser
 
 
 def main() -> None:
     args = build_arg_parser().parse_args()
+
     count = generate_qr_answer_sheets_from_csv(
         csv_path=args.csv_path,
         output_pdf=args.output_pdf,
         text_column=args.text_column,
-        part_column=args.part_column,
         label_column=args.label_column,
         sheet_label_column=args.sheet_label_column,
-        default_part=args.default_part,
         default_sheet_label=args.default_sheet_label,
         logo_path=args.logo_path,
         qr_size_mm=args.qr_size_mm,
@@ -396,6 +406,7 @@ def main() -> None:
         print_text=args.print_text,
         qr_label_font_size_pt=args.qr_label_font_size,
     )
+
     print(f"Created {args.output_pdf} with {count} pages.")
 
 

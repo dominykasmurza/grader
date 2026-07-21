@@ -1,5 +1,4 @@
-qr_text,part,label
-LTU-S1-A,A,LTU-S1
-LTU-S1-B,B,LTU-S1
-LTU-S2-A,A,LTU-S2
-LTU-S2-B,B,LTU-S2
+qr_text,label,sheet_label
+candidate=LTU-S1&part=A,LTU-S1,Theory Examination A
+candidate=LTU-S1&part=B,LTU-S1,Theory Examination B
+candidate=LTU-S2&part=A,LTU-S2,Practice Examination

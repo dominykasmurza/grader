@@ -97,3 +97,28 @@ MIT License. See `LICENSE`.
 ## Disclaimer
 
 Validate detection and grading accuracy before consequential use. The software is provided without warranty.
+## QR-encoded answer-sheet generation
+
+The separate `grader-qr` command creates a multipage PDF from a CSV file.
+Each non-empty row produces one answer-sheet page.
+
+```csv
+qr_text,label,sheet_label
+candidate=LTU-S1&part=A,LTU-S1,Theory Examination A
+candidate=LTU-S1&part=B,LTU-S1,Theory Examination B
+```
+
+```bash
+grader-qr examples/qr_sheets.csv output/qr_answer_sheets.pdf \
+  --text-column qr_text \
+  --label-column label \
+  --sheet-label-column sheet_label \
+  --qr-size-mm 29 \
+  --qr-label-font-size 9 \
+  --error-correction M \
+  --print-text
+```
+
+Use `--default-sheet-label "Biology Examination"` to apply one common
+top-left label. See [`docs/QR_SHEETS.md`](docs/QR_SHEETS.md) for all
+options and production-validation guidance.
