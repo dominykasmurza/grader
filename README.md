@@ -4,8 +4,6 @@ A Python tool for generating and grading printable optical mark recognition shee
 
 The grader uses ArUco markers to align scanned pages, detects marked circles, optionally identifies the exam part from the filename, printed title, or QR code, applies configurable nonlinear scoring, and exports annotated images and CSV reports.
 
-> Public-release scaffold. Replace every `TODO` before the first release.
-
 ## Features
 
 - Printable A4 answer-sheet templates
@@ -76,7 +74,7 @@ Override it with `--score-map`.
 
 ## Privacy and security
 
-Do not commit real candidate sheets, identifying QR data, confidential examinations, real answer keys, internal operational documents, or logos without permission. Use synthetic examples only.
+Do not commit personalized candidate sheets, identifying QR data, confidential examinations or answer keys, internal operational documents, or logos without permission.
 
 ## Known limitation
 
