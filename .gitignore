@@ -1,0 +1,6 @@
+
+# Generated files
+output/
+*.egg-info/
+__pycache__/
+*.py[cod]
