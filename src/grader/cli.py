@@ -14,7 +14,6 @@ from .reporting import write_all_files_metrics_csv
 from .templates import (
     generate_empty_template,
     generate_mock_pdf,
-    generate_part_templates,
 )
 
 
@@ -176,6 +175,14 @@ def build_arg_parser():
         default=DPI,
         help=f"PDF rendering DPI. Default: {DPI}",
     )
+    parser.add_argument(
+    "--template-label",
+    default=None,
+    help=(
+        "Optional text printed in the top-left of generated "
+        "template.pdf and mock_filled_template.pdf. "
+        "By default, no label is printed.",
+)
     return parser
 
 
@@ -208,26 +215,22 @@ def main():
             f"({len(answer_key)} questions)"
         )
 
-    if not args.skip_template_generation:
-        part_a_path, part_b_path = generate_part_templates(
-            logo_path=args.logo_path
-        )
-        print(f"Empty template saved: {part_a_path}")
-        print(f"Empty template saved: {part_b_path}")
+if not args.skip_template_generation:
+    generate_empty_template(
+        path=EMPTY_TEMPLATE_PDF,
+        label_text=args.template_label,
+        logo_path=args.logo_path,
+    )
+    print(f"Empty template saved: {EMPTY_TEMPLATE_PDF}")
 
-        generate_empty_template(
-            EMPTY_TEMPLATE_PDF,
+    if not args.skip_mock_generation:
+        generate_mock_pdf(
+            path=MOCK_PDF,
+            seed=1,
+            label_text=args.template_label,
             logo_path=args.logo_path,
         )
-        print(f"Empty template saved: {EMPTY_TEMPLATE_PDF}")
-
-        if not args.skip_mock_generation:
-            generate_mock_pdf(
-                MOCK_PDF,
-                seed=1,
-                logo_path=args.logo_path,
-            )
-            print(f"Mock filled sheet saved: {MOCK_PDF}")
+        print(f"Mock filled sheet saved: {MOCK_PDF}")
 
     if args.template_only:
         return
