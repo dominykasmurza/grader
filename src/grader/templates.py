@@ -148,32 +148,42 @@ def draw_part_title_pdf(c, label_text):
     )
 
 
-def draw_sheet_header(c, part_title=None, logo_path=None):
+def draw_sheet_header(c, label_text=None, logo_path=None):
+    """Draw optional customizable header text and optional logo."""
     markers = aruco_rects_pdf()
     tr = markers["TR"]
 
-    if part_title:
-        part = normalize_part(part_title)
-        if part:
-            draw_part_title_pdf(c, part)
-        else:
-            c.setFillColorRGB(*_hex_to_rgb01(IBO_GREY_HEX))
-            c.setFont(PART_TITLE_FONT_NAME, PART_TITLE_FONT_SIZE_PT)
-            c.drawString(PART_TITLE_X_PT, PART_TITLE_BASELINE_Y_PT, str(part_title))
+    if label_text:
+        draw_part_title_pdf(c, label_text)
 
     if logo_path:
         if not os.path.exists(logo_path):
-            raise FileNotFoundError(f"Logo path not found: {logo_path}")
+            raise FileNotFoundError(
+                f"Logo path not found: {logo_path}"
+            )
+
         img = ImageReader(logo_path)
         img_w, img_h = img.getSize()
+
         max_w = 72
         max_h = 48
         scale = min(max_w / img_w, max_h / img_h)
+
         draw_w = img_w * scale
         draw_h = img_h * scale
+
         logo_x = tr["x"] - draw_w - 8 - 3 * MM
         logo_y = tr["y"] + (tr["size"] - draw_h) / 2
-        c.drawImage(img, logo_x, logo_y, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
+
+        c.drawImage(
+            img,
+            logo_x,
+            logo_y,
+            width=draw_w,
+            height=draw_h,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
 
 
 
