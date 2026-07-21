@@ -55,13 +55,9 @@ BOTTOM_QUESTION_CLEARANCE_PT = MARGIN_Y_PT + ARUCO_SIZE_PT + 6 * MM
 
 TOP_QUESTION_CLEARANCE_PT = MARGIN_Y_PT + QR_RESERVED_H_PT + QR_RESERVED_EXTRA_CLEARANCE_PT
 
-EMPTY_TEMPLATE_PDF = "omr_empty_template_sticker_circles_fixed_rounded_tighter.pdf"
+EMPTY_TEMPLATE_PDF = "template.pdf"
 
-EMPTY_TEMPLATE_PART_A_PDF = "omr_empty_template_theory_part_a.pdf"
-
-EMPTY_TEMPLATE_PART_B_PDF = "omr_empty_template_theory_part_b.pdf"
-
-MOCK_PDF = "omr_mock_filled_sticker_circles_fixed_rounded_tighter.pdf"
+MOCK_PDF = "mock_filled_template.pdf"
 
 SCANNED_PDF = "scanned_sheet.pdf"
 
