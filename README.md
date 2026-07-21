@@ -86,8 +86,8 @@ The public CLI currently accepts PDF-content files. The underlying image functio
 
 Developed by **Dominykas Murza**.
 
-- Affiliation: TODO
-- ORCID: TODO
+- Affiliation: Life Sciences Center, Vilnius University, Lithuania
+- ORCID: https://orcid.org/0009-0004-8204-5233
 
 ## Citation
 
