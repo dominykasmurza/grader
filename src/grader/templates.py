@@ -192,7 +192,7 @@ def draw_sheet_page(
     fill_answers=False,
     seed=1,
     draw_qr_placeholder=False,
-    part_title=None,
+    label_text=None,
     logo_path=None,
 ):
     """Draw one complete answer-sheet page on an existing ReportLab canvas."""
