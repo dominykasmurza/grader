@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "Grader"
+type: software
+authors:
+  - family-names: "Murza"
+    given-names: "Dominykas"
+    orcid: "TODO: https://orcid.org/0000-0000-0000-0000"
+affiliation: "TODO: add preferred institutional affiliation"
+repository-code: "https://github.com/TODO_USERNAME/grader"
+url: "https://github.com/TODO_USERNAME/grader"
+version: "1.0.0"
+date-released: "TODO: YYYY-MM-DD"
+license: MIT
+keywords:
+  - optical mark recognition
+  - OMR
+  - examination grading
+  - OpenCV
+  - ArUco
+abstract: >
+  A Python tool for generating, detecting, and grading printable true/false examination answer sheets using ArUco-based alignment, configurable optical mark detection, nonlinear scoring, annotated outputs, and CSV metrics.

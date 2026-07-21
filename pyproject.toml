@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grader"
+version = "1.0.0"
+description = "Generate, detect, and grade printable true/false OMR examination sheets."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Dominykas Murza"}]
+dependencies = [
+  "reportlab>=4.0",
+  "pdf2image>=1.17",
+  "opencv-contrib-python>=4.8",
+  "numpy>=1.24",
+  "openpyxl>=3.1",
+  "Pillow>=10.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/TODO_USERNAME/grader"
+Repository = "https://github.com/TODO_USERNAME/grader"
+Issues = "https://github.com/TODO_USERNAME/grader/issues"
+
+[project.scripts]
+grader = "grader.cli:main"
+grader-qr = "grader.qr_sheets:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pypdf>=5"]
