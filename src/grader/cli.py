@@ -217,7 +217,6 @@ def main():
             f"({len(answer_key)} questions)"
         )
 
-if not args.skip_template_generation:
     if not args.skip_template_generation:
         generate_empty_template(
             path=EMPTY_TEMPLATE_PDF,
