@@ -5,12 +5,12 @@ type: software
 authors:
   - family-names: "Murza"
     given-names: "Dominykas"
-    orcid: "TODO: https://orcid.org/0000-0000-0000-0000"
-affiliation: "TODO: add preferred institutional affiliation"
-repository-code: "https://github.com/TODO_USERNAME/grader"
-url: "https://github.com/TODO_USERNAME/grader"
+    orcid: "https://orcid.org/0009-0004-8204-5233"
+affiliation: "Life Sciences Center, Vilnius University, Vilnius, Lithuania"
+repository-code: "https://github.com/dominykasmurza/grader"
+url: "https://github.com/dominykasmurza/grader"
 version: "1.0.0"
-date-released: "TODO: YYYY-MM-DD"
+date-released: "2026-07-21"
 license: MIT
 keywords:
   - optical mark recognition
