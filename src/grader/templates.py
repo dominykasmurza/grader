@@ -148,10 +148,10 @@ def draw_part_title_pdf(c, label_text):
     )
 
 
-draw_sheet_header(
+def draw_sheet_header(
     c,
-    label_text=label_text,
-    logo_path=logo_path,
+    label_text=None,
+    logo_path=None,
 ):
     """Draw optional customizable header text and optional logo."""
     markers = aruco_rects_pdf()
