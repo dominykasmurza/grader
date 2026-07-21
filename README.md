@@ -21,10 +21,9 @@ The grader uses ArUco markers to align scanned pages, detects marked circles, op
 Python 3.10+ and Poppler are required.
 
 ```bash
-git clone https://github.com/TODO_USERNAME/grader.git
+git clone https://github.com/dominykasmurza/grader.git
 cd grader
-python -m venv .venv
-source .venv/bin/activate
+conda activate grader
 pip install -e .
 ```
 
