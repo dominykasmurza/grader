@@ -176,13 +176,15 @@ def build_arg_parser():
         help=f"PDF rendering DPI. Default: {DPI}",
     )
     parser.add_argument(
-    "--template-label",
-    default=None,
-    help=(
-        "Optional text printed in the top-left of generated "
-        "template.pdf and mock_filled_template.pdf. "
-        "By default, no label is printed.",
-)
+        "--template-label",
+        default=None,
+        help=(
+            "Optional text printed in the top-left of generated "
+            "template.pdf and template_filled.pdf. "
+            "By default, no label is printed."
+        ),
+    )
+
     return parser
 
 
@@ -216,26 +218,28 @@ def main():
         )
 
 if not args.skip_template_generation:
-    generate_empty_template(
-        path=EMPTY_TEMPLATE_PDF,
-        label_text=args.template_label,
-        logo_path=args.logo_path,
-    )
-    print(f"Empty template saved: {EMPTY_TEMPLATE_PDF}")
-
-    if not args.skip_mock_generation:
-        generate_mock_pdf(
-            path=MOCK_PDF,
-            seed=1,
+    if not args.skip_template_generation:
+        generate_empty_template(
+            path=EMPTY_TEMPLATE_PDF,
             label_text=args.template_label,
             logo_path=args.logo_path,
         )
-        print(f"Mock filled sheet saved: {MOCK_PDF}")
+        print(f"Empty template saved: {EMPTY_TEMPLATE_PDF}")
+
+        if not args.skip_mock_generation:
+            generate_mock_pdf(
+                path=MOCK_PDF,
+                seed=1,
+                label_text=args.template_label,
+                logo_path=args.logo_path,
+            )
+            print(f"Mock filled sheet saved: {MOCK_PDF}")
 
     if args.template_only:
         return
 
     input_path = args.input_path
+
     if input_path is None:
         if os.path.isdir(BULK_INPUT_FOLDER):
             input_path = BULK_INPUT_FOLDER
@@ -273,15 +277,27 @@ if not args.skip_template_generation:
             metrics_csv_name=args.metrics_csv_name,
             **common_kwargs,
         )
+
     elif os.path.isfile(input_path):
         results = detect_marked_values_from_pdf_file(
             pdf_path=input_path,
             **common_kwargs,
         )
+
         write_all_files_metrics_csv(
-            os.path.join(args.output_folder, args.metrics_csv_name),
+            os.path.join(
+                args.output_folder,
+                args.metrics_csv_name,
+            ),
             results,
             args.output_folder,
         )
+
     else:
-        raise FileNotFoundError(f"Input path not found: {input_path}")
+        raise FileNotFoundError(
+            f"Input path not found: {input_path}"
+        )
+
+
+if __name__ == "__main__":
+    main()
