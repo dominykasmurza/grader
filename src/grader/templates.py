@@ -205,7 +205,7 @@ def draw_sheet_page(
     for key in ["TL", "TR", "BR", "BL"]:
         draw_aruco_marker_pdf(c, markers[key])
 
-    draw_sheet_header(c, part_title=part_title, logo_path=logo_path)
+    draw_sheet_header(c, label_text=label_text, logo_path=logo_path)
 
     # Keep this area clear for a QR code. It is outlined only when requested.
     if draw_qr_placeholder:
@@ -270,7 +270,7 @@ def draw_sheet(
     fill_answers=False,
     seed=1,
     draw_qr_placeholder=False,
-    part_title=None,
+    label_text=None,
     logo_path=None,
 ):
     """Generate a one-page answer-sheet PDF."""
@@ -280,22 +280,41 @@ def draw_sheet(
         fill_answers=fill_answers,
         seed=seed,
         draw_qr_placeholder=draw_qr_placeholder,
-        part_title=part_title,
+        label_text=label_text,
         logo_path=logo_path,
     )
     c.save()
     return answer_key
 
 
-def generate_empty_template(path=EMPTY_TEMPLATE_PDF, part_title=None, logo_path=None):
-    draw_sheet(path, fill_answers=False, part_title=part_title, logo_path=logo_path)
+def generate_empty_template(
+    path=EMPTY_TEMPLATE_PDF,
+    label_text=None,
+    logo_path=None,
+):
+    """Generate an empty answer sheet.
+
+    By default, the sheet has no header label, logo, or QR code.
+    """
+    return draw_sheet(
+        path,
+        fill_answers=False,
+        label_text=label_text,
+        logo_path=logo_path,
+    )
 
 
-def generate_part_templates(logo_path=None):
-    generate_empty_template(EMPTY_TEMPLATE_PART_A_PDF, part_title="Theory Part A", logo_path=logo_path)
-    generate_empty_template(EMPTY_TEMPLATE_PART_B_PDF, part_title="Theory Part B", logo_path=logo_path)
-    return EMPTY_TEMPLATE_PART_A_PDF, EMPTY_TEMPLATE_PART_B_PDF
-
-
-def generate_mock_pdf(path=MOCK_PDF, seed=1, part_title=None, logo_path=None):
-    return draw_sheet(path, fill_answers=True, seed=seed, part_title=part_title, logo_path=logo_path)
+def generate_mock_pdf(
+    path=MOCK_PDF,
+    seed=1,
+    label_text=None,
+    logo_path=None,
+):
+    """Generate a synthetic filled answer sheet."""
+    return draw_sheet(
+        path,
+        fill_answers=True,
+        seed=seed,
+        label_text=label_text,
+        logo_path=logo_path,
+    )
