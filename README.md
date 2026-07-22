@@ -88,7 +88,7 @@ Developed by **Dominykas Murza**.
 
 ## Citation
 
-Complete `CITATION.cff`, create a GitHub release, and connect the repository to Zenodo for a DOI.
+Please see `CITATION.cff`.
 
 ## License
 
