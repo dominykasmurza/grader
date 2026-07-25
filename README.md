@@ -2,7 +2,9 @@
 
 A Python tool for generating and grading printable optical mark recognition sheets for theory examinations composed of true/false statements.
 
-The grader uses ArUco markers to align scanned pages, detects marked circles, optionally identifies the exam part from the filename, printed title, or QR code, applies configurable nonlinear scoring, and exports annotated images and CSV reports.
+The grader uses ArUco markers to align scanned (or photographed and converted to PDF) pages, detects marked circles, optionally identifies the exam part from the filename, printed title, or QR code, applies configurable nonlinear scoring, and exports annotated images and CSV reports.
+
+Originally developed for International Biology Olympiad 2026 in Vilnius, Lithuania.
 
 ## Features
 
@@ -15,6 +17,7 @@ The grader uses ArUco markers to align scanned pages, detects marked circles, op
 - Recursive bulk processing with mirrored output folders
 - Per-sheet and combined CSV metrics
 - Compact JPG, PNG, or WebP annotated output
+- Stickers can be used for resetting the answer fields to empty
 
 ## Installation
 
