@@ -60,6 +60,16 @@ Grade with an Excel answer key:
 grader scanned_sheets --answer-key examples/synthetic_answer_key.xlsx --part auto --output-folder bulk_detected --skip-template-generation
 ```
 
+## Full functionality demo
+
+Upon installation, run:
+
+```bash
+bash ~/grader/run_all_grader_examples.sh ~/grader
+```
+
+The output will be in the directory `grader/demo_output`
+
 ## Answer-key format
 
 The preferred Excel layout is:
