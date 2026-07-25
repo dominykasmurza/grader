@@ -361,53 +361,6 @@ def _run_detection_on_image(
     )
 
 
-def detect_marked_values_from_pdf(
-    scanned_pdf_path,
-    rendered_png_path=RENDERED_PNG,
-    vis_path=VIS_PNG,
-    csv_path=CSV_PATH,
-    answer_key=None,
-    part="auto",
-    score_map=None,
-    enable_title_ocr=ENABLE_TITLE_OCR,
-    title_ocr_language=TITLE_OCR_LANGUAGE,
-    enable_qr_reader=ENABLE_QR_READER,
-    add_timestamp=ADD_TIMESTAMP_TO_DETECTED,
-    grader_text=GRADER_HEADER_TEXT,
-    min_aruco_markers=MIN_ARUCO_MARKERS,
-    detected_scale=DETECTED_OUTPUT_SCALE,
-    jpeg_quality=DETECTED_JPEG_QUALITY,
-    webp_quality=DETECTED_WEBP_QUALITY,
-    png_compression=DETECTED_PNG_COMPRESSION,
-):
-    pdf_to_png(scanned_pdf_path, rendered_png_path, DPI)
-    image = cv2.imread(rendered_png_path)
-    if image is None:
-        raise FileNotFoundError(rendered_png_path)
-
-    return _run_detection_on_image(
-        image=image,
-        vis_path=vis_path,
-        csv_path=csv_path,
-        rendered_png_path=rendered_png_path,
-        answer_key=answer_key,
-        part=part,
-        source_name=scanned_pdf_path,
-        page_number=1,
-        score_map=score_map,
-        enable_title_ocr=enable_title_ocr,
-        title_ocr_language=title_ocr_language,
-        enable_qr_reader=enable_qr_reader,
-        add_timestamp=add_timestamp,
-        grader_text=grader_text,
-        min_aruco_markers=min_aruco_markers,
-        detected_scale=detected_scale,
-        jpeg_quality=jpeg_quality,
-        webp_quality=webp_quality,
-        png_compression=png_compression,
-    )
-
-
 def detect_marked_values_from_image(
     image_path,
     vis_path=VIS_PNG,
