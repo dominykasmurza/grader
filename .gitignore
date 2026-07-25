@@ -4,3 +4,10 @@ output/
 *.egg-info/
 __pycache__/
 *.py[cod]
+
+# Generated grader outputs
+demo_output/
+validation_output/
+
+# macOS metadata
+.DS_Store
