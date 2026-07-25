@@ -5,7 +5,7 @@ import os
 
 from . import config
 from .config import *
-from .grading import load_answer_key, parse_score_map_arg
+from .grading import answer_key_part_labels, load_answer_key, parse_score_map_arg
 from .processing import (
     detect_marked_values_from_pdf_file,
     detect_marked_values_from_pdf_folder,
@@ -93,18 +93,19 @@ def build_arg_parser():
         "--answer-key",
         default=None,
         help=(
-            "Path to .xlsx answer key. Question codes are read from column A; "
-            "correct answers from columns D-G."
+            "Path to .xlsx answer key. Column A contains the question number/code, "
+            "column B contains the PartLabel for every question, and columns D-G "
+            "contain the four correct T/F answers."
         ),
     )
     parser.add_argument(
         "--part",
         default="auto",
-        choices=["A", "B", "auto"],
+        metavar="LABEL|auto",
         help=(
-            "Theory part used for grading. Explicit A/B always wins. With auto, "
-            "filenames containing A-1 use Part A and filenames containing B-1 "
-            "use Part B; QR contents are the fallback."
+            "Answer-key PartLabel used for grading. An explicit label must match "
+            "a PartLabel in the answer key. With auto, configured labels are "
+            "matched in the filename and QR payload; both must agree when present."
         ),
     )
     parser.add_argument(
@@ -219,10 +220,12 @@ def main():
     print(f"Minimum ArUco markers: {args.min_aruco_markers}")
 
     if answer_key:
+        part_labels = answer_key_part_labels(answer_key)
         print(
             f"Answer key loaded: {args.answer_key} "
             f"({len(answer_key)} questions)"
         )
+        print(f"Answer-key part labels: {', '.join(part_labels)}")
 
     if not args.skip_template_generation:
         generate_empty_template(

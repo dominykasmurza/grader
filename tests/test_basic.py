@@ -13,3 +13,6 @@ def test_score_map():
 
 def test_question_code():
     assert question_code_for("A", 1) == "A01"
+
+def test_normalize_custom_part_label():
+    assert normalize_part("Form Alpha") == "Form Alpha"

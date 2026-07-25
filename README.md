@@ -2,7 +2,7 @@
 
 A Python tool for generating and grading printable optical mark recognition sheets for theory examinations composed of true/false statements.
 
-The grader uses ArUco markers to align scanned (or photographed and converted to PDF) pages, detects marked circles, optionally identifies the exam part from the filename, printed title, or QR code, applies configurable nonlinear scoring, and exports annotated images and CSV reports.
+The grader uses ArUco markers to align scanned (or photographed and converted to PDF) pages, detects marked circles, resolves an answer-key part label from the filename and/or QR code, applies configurable nonlinear scoring, and exports annotated images and CSV reports. Optional title OCR is metadata only and never controls grading.
 
 Originally developed for International Biology Olympiad 2026 in Vilnius, Lithuania.
 
@@ -12,7 +12,8 @@ Originally developed for International Biology Olympiad 2026 in Vilnius, Lithuan
 - Four-, three-, and two-marker ArUco alignment fallback
 - Fixed-threshold or Otsu mark detection
 - Empty and ambiguous-mark detection
-- Optional QR-code reading and printed-title part detection
+- Answer-key-driven part-label resolution from filenames and QR payloads
+- Optional sheet-title OCR for CSV metadata only
 - Configurable nonlinear scoring
 - Recursive bulk processing with mirrored output folders
 - Per-sheet and combined CSV metrics
@@ -60,7 +61,49 @@ grader scanned_sheets --answer-key examples/synthetic_answer_key.xlsx --part aut
 
 ## Answer-key format
 
-Column A contains question codes such as `A01` or `B50`; columns D-G contain the four correct T/F answers.
+The preferred Excel layout is:
+
+| Column | Content |
+|---|---|
+| A | Question number or question code |
+| B | `PartLabel`, repeated for every question |
+| C | Optional/unused |
+| D-G | Correct T/F answers for statements 1-4 |
+
+Example:
+
+| Question | PartLabel |  | Answer1 | Answer2 | Answer3 | Answer4 |
+|---:|---|---|---|---|---|---|
+| 1 | Form-Alpha |  | T | F | T | F |
+| 2 | Form-Alpha |  | F | F | T | T |
+| 1 | Form-Beta |  | T | T | F | F |
+
+`PartLabel` may be any short, distinctive text. With `--part auto`, the grader searches for the labels defined in column B as token-bounded substrings in the input filename and QR payload. If both sources contain a label, they must agree. Conflicts and ambiguous matches are reported and the sheet is not graded silently.
+
+Legacy answer keys with codes such as `A01` or `B50` in column A and a blank column B remain supported.
+
+### Filename and QR examples
+
+For an answer-key label `Form-Alpha`, either of these can resolve the part:
+
+```text
+LTU-S1_Form-Alpha_scan.pdf
+candidate=LTU-S1&part=Form-Alpha
+```
+
+Run automatic resolution with:
+
+```bash
+grader scanned_sheets   --answer-key answer_key.xlsx   --part auto   --output-folder bulk_detected   --skip-template-generation
+```
+
+Or override it explicitly with an exact answer-key label:
+
+```bash
+grader scanned_sheets --answer-key answer_key.xlsx --part "Form-Alpha"
+```
+
+Each question row in the detailed CSV contains `PartLabel`, along with `PartResolutionSource`, `PartResolutionStatus`, filename/QR matches, and `GradingStatus`.
 
 ## Default scoring
 

@@ -5,10 +5,6 @@ import os
 
 from .config import *
 from .grading import question_code_for
-from .part_detection import (
-    determine_part_resolution_source,
-    infer_part_from_filename_marker,
-)
 
 
 def write_detailed_sheet_csv(
@@ -33,6 +29,12 @@ def write_detailed_sheet_csv(
         "Grader",
         "GeneratedAt",
         "Part",
+        "PartLabel",
+        "PartResolutionSource",
+        "PartResolutionStatus",
+        "FilenamePartMatches",
+        "QRPartMatches",
+        "GradingStatus",
         "QRText",
         "QRStatus",
         "SheetTitleText",
@@ -78,6 +80,12 @@ def write_detailed_sheet_csv(
         "Grader": grader_text,
         "GeneratedAt": timestamp_text,
         "Part": resolved_part or "",
+        "PartLabel": resolved_part or "",
+        "PartResolutionSource": grade_metrics.get("part_resolution_source", ""),
+        "PartResolutionStatus": grade_metrics.get("part_resolution_status", ""),
+        "FilenamePartMatches": ";".join(grade_metrics.get("filename_part_matches", [])),
+        "QRPartMatches": ";".join(grade_metrics.get("qr_part_matches", [])),
+        "GradingStatus": grade_metrics.get("grading_status", ""),
         "QRText": qr_info.get("text", ""),
         "QRStatus": qr_info.get("status", ""),
         "SheetTitleText": title_info.get("text", ""),
@@ -149,7 +157,6 @@ def _result_entry_to_metrics_row(entry, output_root):
     status = entry.get("status", "ok")
     error = entry.get("error", "")
     page = entry.get("page", "")
-    filename_info = infer_part_from_filename_marker(source_pdf)
 
     row = {field: "" for field in ALL_FILES_METRICS_FIELDS}
     row.update({
@@ -158,8 +165,8 @@ def _result_entry_to_metrics_row(entry, output_root):
         "Page": page,
         "Status": status,
         "Error": error,
-        "FilenamePart": filename_info.get("part") or "",
-        "FilenamePartStatus": filename_info.get("status", ""),
+        "FilenamePart": "",
+        "FilenamePartStatus": "",
         "DetectedFile": entry.get("detected_file") or entry.get("detected_png", ""),
         "DetailedCSV": entry.get("detailed_csv", ""),
     })
@@ -192,14 +199,17 @@ def _result_entry_to_metrics_row(entry, output_root):
         alignment_info,
     ) = entry["result"]
 
-    requested_part = entry.get("requested_part", "auto")
-    row["PartResolutionSource"] = determine_part_resolution_source(
-        requested_part,
-        filename_info,
-        qr_info,
-        resolved_part,
-    )
+    filename_matches = grade_metrics.get("filename_part_matches", [])
+    qr_matches = grade_metrics.get("qr_part_matches", [])
+    row["FilenamePart"] = filename_matches[0] if len(filename_matches) == 1 else ""
+    row["FilenamePartStatus"] = grade_metrics.get("filename_part_status", "")
+    row["FilenamePartMatches"] = ";".join(filename_matches)
+    row["QRPartMatches"] = ";".join(qr_matches)
+    row["PartResolutionSource"] = grade_metrics.get("part_resolution_source", "")
+    row["PartResolutionStatus"] = grade_metrics.get("part_resolution_status", "")
     row["ResolvedPart"] = resolved_part or ""
+    row["PartLabel"] = resolved_part or ""
+    row["GradingStatus"] = grade_metrics.get("grading_status", "")
     row["QRText"] = qr_info.get("text", "")
     row["QRStatus"] = qr_info.get("status", "")
     row["SheetTitleText"] = title_info.get("text", "")

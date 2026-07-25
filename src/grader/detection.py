@@ -8,17 +8,17 @@ from .config import *
 from .alignment import warp_with_markers
 from .geometry import square_centers_px, pdf_len_to_px
 from .grading import (
+    answer_key_has_part,
+    answer_key_part_labels,
     format_score,
     grade_detected_rows,
     normalize_score_map,
 )
-from .grading import normalize_part
 from .part_detection import (
     detect_qr_code,
     disabled_qr_info,
     draw_qr_debug,
-    infer_part_from_filename_marker,
-    infer_part_from_text,
+    resolve_part_label,
 )
 from .title_detection import (
     detect_sheet_title_text,
@@ -77,15 +77,21 @@ def _run_detection_on_image(
         else disabled_sheet_title_info(warped)
     )
 
-    # Explicit --part A/B always wins. In auto mode, filename markers have
-    # priority and QR contents are the only fallback. Visible title text is
-    # reporting metadata only and never affects the grading part.
-    filename_part_info = infer_part_from_filename_marker(source_name)
-    resolved_part = normalize_part(part)
-    if resolved_part is None and str(part).strip().lower() == "auto":
-        resolved_part = filename_part_info.get("part")
-        if resolved_part is None and enable_qr_reader:
-            resolved_part = infer_part_from_text(qr_info.get("text", ""))
+    # Part labels are defined by the answer key. In automatic mode, the
+    # filename and QR code are matched against those labels. Visible title text
+    # is reporting metadata only and never affects grading.
+    answer_key = answer_key or {}
+    known_part_labels = answer_key_part_labels(answer_key)
+    resolution_labels = known_part_labels or ["A", "B"]
+    part_resolution = resolve_part_label(
+        requested_part=part,
+        source_name=source_name,
+        qr_text=qr_info.get("text", "") if enable_qr_reader else "",
+        part_labels=resolution_labels,
+    )
+    resolved_part = part_resolution.get("part")
+    filename_part_info = part_resolution.get("filename", {})
+    qr_part_info = part_resolution.get("qr", {})
 
     timestamp_text = (
         datetime.now().astimezone().strftime(TIMESTAMP_FORMAT)
@@ -198,7 +204,6 @@ def _run_detection_on_image(
         detected_rows.append(detected)
         detail_rows.append(detail_row)
 
-    answer_key = answer_key or {}
     graded_rows = []
     grade_metrics = {
         "gradable_cells": 0,
@@ -210,16 +215,25 @@ def _run_detection_on_image(
         "max_score": 0.0,
         "linear_correct_cells": 0,
         "question_count": 0,
+        "grading_status": "no_answer_key" if not answer_key else "part_unresolved",
+        "part_resolution_source": part_resolution.get("source", ""),
+        "part_resolution_status": part_resolution.get("status", ""),
+        "filename_part_matches": filename_part_info.get("matches", []),
+        "filename_part_status": filename_part_info.get("status", ""),
+        "qr_part_matches": qr_part_info.get("matches", []),
+        "qr_part_status": qr_part_info.get("status", ""),
     }
 
-    if answer_key and resolved_part:
-        graded_rows, grade_metrics = grade_detected_rows(
+    if answer_key and resolved_part and answer_key_has_part(answer_key, resolved_part):
+        graded_rows, graded_values = grade_detected_rows(
             detected_rows,
             answer_key,
             resolved_part,
             score_map=score_map,
         )
+        grade_metrics.update(graded_values)
         grade_metrics["ambiguous"] = metrics["ambiguous"]
+        grade_metrics["grading_status"] = "graded"
         draw_grading_overlay(
             debug,
             centers,
@@ -231,6 +245,12 @@ def _run_detection_on_image(
         draw_question_score_overlay(debug, centers, graded_rows, radius_px)
         draw_total_score_overlay(debug, grade_metrics)
     else:
+        if answer_key and resolved_part:
+            grade_metrics["grading_status"] = "resolved_part_not_in_answer_key"
+        elif answer_key and part_resolution.get("status") == "filename_qr_part_conflict":
+            grade_metrics["grading_status"] = "part_conflict"
+        elif answer_key and str(part_resolution.get("status", "")).startswith("ambiguous_"):
+            grade_metrics["grading_status"] = "part_ambiguous"
         for q_idx, row in enumerate(centers):
             for s_idx, item in enumerate(row):
                 detected = detected_rows[q_idx][s_idx]
@@ -274,7 +294,7 @@ def _run_detection_on_image(
 
     draw_bottom_legend(
         debug,
-        graded_mode=bool(answer_key and resolved_part),
+        graded_mode=bool(graded_rows),
     )
     draw_grader_header(
         debug,
@@ -317,9 +337,12 @@ def _run_detection_on_image(
     print("Alignment:")
     print(f"  ArUco markers: {alignment_info.get('marker_count', 0)} ({', '.join(alignment_info.get('marker_names', []))})")
     print(f"  Mode         : {alignment_info.get('mode', '')}")
-    print("Part resolution:")
-    print(f"  Filename marker: {filename_part_info.get('status', '')}")
-    print(f"  Resolved part  : {resolved_part or 'not resolved'}")
+    print("Part-label resolution:")
+    print(f"  Source          : {part_resolution.get('source', '')}")
+    print(f"  Status          : {part_resolution.get('status', '')}")
+    print(f"  Filename matches: {', '.join(filename_part_info.get('matches', [])) or 'none'}")
+    print(f"  QR matches      : {', '.join(qr_part_info.get('matches', [])) or 'none'}")
+    print(f"  Resolved label  : {resolved_part or 'not resolved'}")
     print("Optional readers:")
     print(f"  Title OCR    : {'enabled' if enable_title_ocr else 'disabled'}")
     print(f"  QR reader    : {'enabled' if enable_qr_reader else 'disabled'}")
@@ -340,7 +363,8 @@ def _run_detection_on_image(
 
     if answer_key:
         print("Grading metrics:")
-        print(f"  Part       : {resolved_part or 'not resolved'}")
+        print(f"  Part label : {resolved_part or 'not resolved'}")
+        print(f"  Status     : {grade_metrics.get('grading_status', '')}")
         print(f"  Correct    : {grade_metrics['correct']}")
         print(f"  Incorrect  : {grade_metrics['incorrect']}")
         print(

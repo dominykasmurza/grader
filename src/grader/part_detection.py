@@ -1,14 +1,15 @@
-"""QR- and filename-based theory-part resolution."""
+"""QR- and filename-based answer-key part-label resolution."""
 
 import os
 import re
+from urllib.parse import unquote_plus
 
 import cv2
 import numpy as np
 
 from .config import *
 from .geometry import pdf_to_img_xy
-from .grading import normalize_part
+from .grading import canonical_part_label, normalize_part_label
 
 
 def qr_reserved_rect_px(img_w, img_h, pad_pt=8 * MM):
@@ -30,7 +31,6 @@ def qr_reserved_rect_px(img_w, img_h, pad_pt=8 * MM):
 def _decode_qr_in_image(img):
     detector = cv2.QRCodeDetector()
 
-    # OpenCV builds differ. Try multi first, then single.
     try:
         ok, decoded_info, points, straight_qrcode = detector.detectAndDecodeMulti(img)
         if ok and decoded_info:
@@ -103,57 +103,245 @@ def draw_qr_debug(debug, qr_info):
     )
 
 
-def infer_part_from_text(*texts):
-    """Infer A/B only from machine-readable QR text.
+def _unique_part_labels(part_labels):
+    labels = []
+    seen = set()
+    for raw_label in part_labels or []:
+        label = normalize_part_label(raw_label)
+        canonical = canonical_part_label(label)
+        if canonical and canonical not in seen:
+            seen.add(canonical)
+            labels.append(label)
+    return labels
 
-    Accepted examples include ``part=A``, ``part:A``, ``part_A``,
-    ``part-A``, ``Theory A``, and question-style codes such as ``A01``.
-    """
-    joined = " ".join(str(t or "") for t in texts)
-    if re.search(
-        r"\bpart\s*[:=_-]?\s*a\b|\btheory\s*[:=_-]?\s*a\b|\bA\d{2}\b",
-        joined,
-        re.I,
-    ):
-        return "A"
-    if re.search(
-        r"\bpart\s*[:=_-]?\s*b\b|\btheory\s*[:=_-]?\s*b\b|\bB\d{2}\b",
-        joined,
-        re.I,
-    ):
-        return "B"
+
+def _exact_known_label(value, part_labels):
+    target = canonical_part_label(unquote_plus(str(value or "")).strip())
+    if not target:
+        return None
+    for label in _unique_part_labels(part_labels):
+        if canonical_part_label(label) == target:
+            return label
     return None
 
 
-def infer_part_from_filename_marker(path):
-    """Resolve the marking scheme from literal A-1/B-1 filename markers."""
-    filename = os.path.basename(str(path or ""))
-    upper_name = filename.upper()
-    has_a = "A-1" in upper_name
-    has_b = "B-1" in upper_name
+def _token_matches(text, part_labels):
+    """Find configured labels as literal, token-bounded substrings.
 
-    if has_a and has_b:
+    Token boundaries prevent a one-letter label such as ``A`` from matching a
+    country or candidate code such as ``BRA-123``. When overlapping labels
+    match at the same location, the longest configured label wins.
+    """
+    source = str(text or "")
+    hits = []
+    for label in _unique_part_labels(part_labels):
+        pattern = re.compile(
+            rf"(?<![A-Za-z0-9]){re.escape(label)}(?![A-Za-z0-9])",
+            re.IGNORECASE,
+        )
+        for match in pattern.finditer(source):
+            hits.append((match.start(), match.end(), label))
+
+    if not hits:
+        return []
+
+    # Suppress shorter labels nested inside a longer label at the same span.
+    selected = []
+    for start, end, label in hits:
+        contained_by_longer = any(
+            other_start <= start
+            and other_end >= end
+            and (other_end - other_start) > (end - start)
+            for other_start, other_end, _ in hits
+        )
+        if not contained_by_longer:
+            selected.append(label)
+
+    unique = []
+    seen = set()
+    for label in selected:
+        canonical = canonical_part_label(label)
+        if canonical not in seen:
+            seen.add(canonical)
+            unique.append(label)
+    return unique
+
+
+def _resolution_info(matches, source, no_match_status):
+    matches = _unique_part_labels(matches)
+    if len(matches) == 1:
+        return {
+            "part": matches[0],
+            "matches": matches,
+            "status": f"matched_{source}",
+        }
+    if len(matches) > 1:
         return {
             "part": None,
-            "status": "ambiguous_both_A-1_and_B-1",
-            "filename": filename,
-        }
-    if has_a:
-        return {
-            "part": "A",
-            "status": "matched_A-1",
-            "filename": filename,
-        }
-    if has_b:
-        return {
-            "part": "B",
-            "status": "matched_B-1",
-            "filename": filename,
+            "matches": matches,
+            "status": f"ambiguous_{source}_labels",
         }
     return {
         "part": None,
-        "status": "no_A-1_or_B-1_marker",
-        "filename": filename,
+        "matches": [],
+        "status": no_match_status,
+    }
+
+
+def infer_part_label_from_filename(path, part_labels):
+    """Match one configured answer-key part label in the filename."""
+    filename = os.path.basename(str(path or ""))
+    info = _resolution_info(
+        _token_matches(filename, part_labels),
+        source="filename",
+        no_match_status="no_part_label_in_filename",
+    )
+    info["filename"] = filename
+    return info
+
+
+def _explicit_qr_part_values(text):
+    values = re.findall(
+        r"(?:^|[?&;,\s])part(?:_label)?\s*[:=]\s*([^&;,\s]+)",
+        str(text or ""),
+        flags=re.IGNORECASE,
+    )
+    return [unquote_plus(value).strip() for value in values if value.strip()]
+
+
+def infer_part_label_from_qr_text(text, part_labels):
+    """Match one configured part label in QR text.
+
+    Explicit ``part=...`` or ``part_label=...`` values are preferred. If no
+    such key is present, the function falls back to token-bounded substring
+    matching against the complete QR payload.
+    """
+    explicit_values = _explicit_qr_part_values(text)
+    if explicit_values:
+        matches = [
+            matched
+            for value in explicit_values
+            if (matched := _exact_known_label(value, part_labels)) is not None
+        ]
+        info = _resolution_info(
+            matches,
+            source="qr",
+            no_match_status="qr_part_value_not_in_answer_key",
+        )
+        info["explicit_values"] = explicit_values
+        return info
+
+    info = _resolution_info(
+        _token_matches(text, part_labels),
+        source="qr",
+        no_match_status="no_part_label_in_qr",
+    )
+    info["explicit_values"] = []
+    return info
+
+
+def resolve_part_label(requested_part, source_name, qr_text, part_labels):
+    """Resolve a grading part label from explicit input, filename, or QR.
+
+    Automatic resolution is answer-key driven: only labels found in the answer
+    key are eligible. Filename and QR results must agree when both are present.
+    """
+    known_labels = _unique_part_labels(part_labels)
+    requested_text = str(requested_part or "").strip()
+
+    if requested_text and requested_text.casefold() != "auto":
+        explicit = _exact_known_label(requested_text, known_labels)
+        if explicit is None:
+            return {
+                "part": None,
+                "source": "explicit_cli_part",
+                "status": "explicit_part_not_in_answer_key",
+                "filename": infer_part_label_from_filename(source_name, known_labels),
+                "qr": infer_part_label_from_qr_text(qr_text, known_labels),
+            }
+        return {
+            "part": explicit,
+            "source": "explicit_cli_part",
+            "status": "resolved_explicit_cli_part",
+            "filename": infer_part_label_from_filename(source_name, known_labels),
+            "qr": infer_part_label_from_qr_text(qr_text, known_labels),
+        }
+
+    filename_info = infer_part_label_from_filename(source_name, known_labels)
+    qr_info = infer_part_label_from_qr_text(qr_text, known_labels)
+
+    if filename_info["status"].startswith("ambiguous_"):
+        return {
+            "part": None,
+            "source": "filename",
+            "status": filename_info["status"],
+            "filename": filename_info,
+            "qr": qr_info,
+        }
+    if qr_info["status"].startswith("ambiguous_"):
+        return {
+            "part": None,
+            "source": "qr_text",
+            "status": qr_info["status"],
+            "filename": filename_info,
+            "qr": qr_info,
+        }
+
+    filename_part = filename_info.get("part")
+    qr_part = qr_info.get("part")
+    if filename_part and qr_part:
+        if canonical_part_label(filename_part) != canonical_part_label(qr_part):
+            return {
+                "part": None,
+                "source": "filename_and_qr",
+                "status": "filename_qr_part_conflict",
+                "filename": filename_info,
+                "qr": qr_info,
+            }
+        return {
+            "part": filename_part,
+            "source": "filename_and_qr",
+            "status": "resolved_filename_and_qr_agree",
+            "filename": filename_info,
+            "qr": qr_info,
+        }
+    if filename_part:
+        return {
+            "part": filename_part,
+            "source": "filename",
+            "status": "resolved_filename",
+            "filename": filename_info,
+            "qr": qr_info,
+        }
+    if qr_part:
+        return {
+            "part": qr_part,
+            "source": "qr_text",
+            "status": "resolved_qr",
+            "filename": filename_info,
+            "qr": qr_info,
+        }
+    return {
+        "part": None,
+        "source": "unresolved",
+        "status": "no_answer_key_part_label_matched",
+        "filename": filename_info,
+        "qr": qr_info,
+    }
+
+
+# Backward-compatible A/B helpers retained for external callers.
+def infer_part_from_text(*texts):
+    joined = " ".join(str(text or "") for text in texts)
+    return infer_part_label_from_qr_text(joined, ["A", "B"]).get("part")
+
+
+def infer_part_from_filename_marker(path):
+    info = infer_part_label_from_filename(path, ["A", "B"])
+    return {
+        "part": info.get("part"),
+        "status": info.get("status", ""),
+        "filename": info.get("filename", os.path.basename(str(path or ""))),
     }
 
 
@@ -163,15 +351,14 @@ def determine_part_resolution_source(
     qr_info,
     resolved_part,
 ):
-    """Describe which source supplied the final Part A/B decision."""
-    explicit = normalize_part(requested_part)
+    explicit = normalize_part_label(requested_part)
     if explicit:
         return "explicit_cli_part"
     if not resolved_part:
         return "unresolved"
-    if filename_part_info.get("part") == resolved_part:
-        return filename_part_info.get("status", "filename_marker")
-    if infer_part_from_text(qr_info.get("text", "")) == resolved_part:
+    if canonical_part_label(filename_part_info.get("part")) == canonical_part_label(resolved_part):
+        return "filename"
+    if canonical_part_label(infer_part_from_text(qr_info.get("text", ""))) == canonical_part_label(resolved_part):
         return "qr_text"
     return "other"
 
