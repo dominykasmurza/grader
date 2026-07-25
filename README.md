@@ -19,6 +19,7 @@ Originally developed for International Biology Olympiad 2026 in Vilnius, Lithuan
 - Per-sheet and combined CSV metrics
 - Compact JPG, PNG, or WebP annotated output
 - Stickers can be used for resetting the answer fields to empty
+- The sticker design has bigger circles than original sheet to allow some sticker application error margin
 
 ## Installation
 
@@ -165,6 +166,6 @@ grader-qr examples/qr_sheets.csv output/qr_answer_sheets.pdf \
   --print-text
 ```
 
-Use `--default-sheet-label "Biology Examination"` to apply one common
+Use `--default-sheet-label "Your label"` to apply one common
 top-left label. See [`docs/QR_SHEETS.md`](docs/QR_SHEETS.md) for all
 options and production-validation guidance.
