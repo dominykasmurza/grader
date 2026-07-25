@@ -8,7 +8,7 @@
 6. Compare with the answer key and apply the configurable score map.
 7. Export annotated images and CSV metrics.
 
-## Validation details to add
+## Validation details
 
 - Scanner models: Validated with Sharp printers/scanners (BP70C31, BP50C31, MX3061, MX3060, MX2651), also works with pictures from smartphones, but even lighting needs to be ensured (avoid shadow).
 - Number of sheets reviewed: 604 sheets were evaluated at the IBO 2026.
