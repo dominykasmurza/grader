@@ -184,7 +184,7 @@ cp "$EMPTY_TEMPLATE" "$DEMO/templates/template_blank.pdf"
 
 # Custom title, logo, and synthetic filled example.
 grader --template-only \
-  --template-label "Grader demonstration" \
+  --template-label "Demo" \
   --logo-path "examples/grader.png"
 
 cp "$EMPTY_TEMPLATE" "$DEMO/templates/template_custom_label_and_logo.pdf"
@@ -212,7 +212,7 @@ grader-qr \
   --text-column qr_text \
   --label-column label \
   --sheet-label-column sheet_label \
-  --default-sheet-label "Default biology examination" \
+  --default-sheet-label "Biology" \
   --logo-path "examples/grader.png" \
   --qr-size-mm 29 \
   --qr-label-font-size 9 \

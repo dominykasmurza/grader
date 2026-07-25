@@ -10,8 +10,8 @@ def test_read_qr_csv_with_custom_labels(tmp_path):
     source = tmp_path / "codes.csv"
     source.write_text(
         "qr_text,label,sheet_label\n"
-        "STUDENT-1-A,Student 1,Examination A\n"
-        "STUDENT-1-B,Student 1,Examination B\n",
+        "STUDENT-1-A,Student 1,Part A\n"
+        "STUDENT-1-B,Student 1,Part B\n",
         encoding="utf-8",
     )
 
@@ -20,7 +20,7 @@ def test_read_qr_csv_with_custom_labels(tmp_path):
     assert len(records) == 2
     assert records[0].qr_text == "STUDENT-1-A"
     assert records[0].label == "Student 1"
-    assert records[1].sheet_label == "Examination B"
+    assert records[1].sheet_label == "Part B"
 
 
 def test_default_sheet_label(tmp_path):
@@ -33,10 +33,10 @@ def test_default_sheet_label(tmp_path):
 
     records = read_qr_sheet_csv(
         source,
-        default_sheet_label="Biology Examination",
+        default_sheet_label="Biology",
     )
 
-    assert records[0].sheet_label == "Biology Examination"
+    assert records[0].sheet_label == "Biology"
 
 
 def test_generate_multipage_qr_pdf(tmp_path):
@@ -45,8 +45,8 @@ def test_generate_multipage_qr_pdf(tmp_path):
 
     source.write_text(
         "qr_text,sheet_label\n"
-        "CODE-A,Examination A\n"
-        "CODE-B,Examination B\n",
+        "CODE-A,Part A\n"
+        "CODE-B,Part B\n",
         encoding="utf-8",
     )
 

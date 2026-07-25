@@ -1,5 +1,5 @@
 qr_text,label,sheet_label
-candidate=LTU-S1&part=A,LTU-S1,Theory Part A
-candidate=LTU-S1&part=B,LTU-S1,Theory Part B
-candidate=LTU-S2&part=A,LTU-S2,Theory Part A
-candidate=LTU-S2&part=B,LTU-S2,Theory Part B
+candidate=LTU-S1&part=A,LTU-S1,Part A
+candidate=LTU-S1&part=B,LTU-S1,Part B
+candidate=LTU-S2&part=A,LTU-S2,Part A
+candidate=LTU-S2&part=B,LTU-S2,Part B

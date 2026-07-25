@@ -161,8 +161,8 @@ Each non-empty row produces one answer-sheet page.
 
 ```csv
 qr_text,label,sheet_label
-candidate=LTU-S1&part=A,LTU-S1,Theory Examination A
-candidate=LTU-S1&part=B,LTU-S1,Theory Examination B
+candidate=LTU-S1&part=A,LTU-S1,Part A
+candidate=LTU-S1&part=B,LTU-S1,Part B
 ```
 
 ```bash

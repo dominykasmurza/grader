@@ -97,7 +97,7 @@ def test_explicit_label_must_exist_in_answer_key():
 
 
 def test_legacy_aliases_and_codes_still_work():
-    assert normalize_part("Theory Part A") == "A"
+    assert normalize_part("Part A") == "A"
     assert normalize_part("part b") == "B"
     assert question_code_for("A", 1) == "A01"
     assert question_code_for("Form-Alpha", 1) == "Form-Alpha:01"

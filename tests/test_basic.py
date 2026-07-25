@@ -5,7 +5,7 @@ def test_normalize_answer():
     assert normalize_answer("0") == "F"
 
 def test_normalize_part():
-    assert normalize_part("Theory Part A") == "A"
+    assert normalize_part("Part A") == "A"
     assert normalize_part("part b") == "B"
 
 def test_score_map():

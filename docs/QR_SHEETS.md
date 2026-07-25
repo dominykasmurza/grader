@@ -36,9 +36,9 @@ The output contains three pages.
 
 ```csv
 qr_text,label,sheet_label
-candidate=LTU-S1&part=A,LTU-S1,Theory Examination A
-candidate=LTU-S1&part=B,LTU-S1,Theory Examination B
-candidate=LTU-S2&part=A,LTU-S2,Practice Examination
+candidate=LTU-S1&part=A,LTU-S1,Part A
+candidate=LTU-S1&part=B,LTU-S1,Part B
+candidate=LTU-S2&part=A,LTU-S2,Practice
 ```
 
 The columns have separate purposes:
@@ -63,7 +63,7 @@ grader-qr examples/qr_sheets.csv output/qr_answer_sheets.pdf \
 
 ```bash
 grader-qr examples/qr_sheets.csv output/qr_answer_sheets.pdf \
-  --default-sheet-label "Biology Examination" \
+  --default-sheet-label "Biology" \
   --print-text
 ```
 
@@ -112,7 +112,7 @@ grader-qr examples/qr_sheets.csv output/qr_answer_sheets.pdf \
   --text-column qr_text \
   --label-column label \
   --sheet-label-column sheet_label \
-  --default-sheet-label "Biology Examination" \
+  --default-sheet-label "Biology" \
   --qr-size-mm 29 \
   --qr-label-font-size 9 \
   --error-correction M \

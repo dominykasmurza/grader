@@ -5,6 +5,7 @@ import random
 import cv2
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.lib.utils import ImageReader
 
 from .config import *
@@ -139,8 +140,47 @@ def draw_part_title_pdf(c, label_text):
     if not label:
         return
 
+    # Keep the title entirely inside the configured OCR region and
+    # prevent it from extending into the reserved QR-code area.
+    max_width = max(
+        1.0,
+        SHEET_TITLE_CROP_X1_PT - PART_TITLE_X_PT,
+    )
+    font_size = float(PART_TITLE_FONT_SIZE_PT)
+    min_font_size = 10.0
+
+    while (
+        font_size > min_font_size
+        and stringWidth(
+            label,
+            PART_TITLE_FONT_NAME,
+            font_size,
+        ) > max_width
+    ):
+        font_size -= 0.5
+
+    if stringWidth(
+        label,
+        PART_TITLE_FONT_NAME,
+        font_size,
+    ) > max_width:
+        suffix = "..."
+        fitted = label
+
+        while (
+            fitted
+            and stringWidth(
+                fitted + suffix,
+                PART_TITLE_FONT_NAME,
+                font_size,
+            ) > max_width
+        ):
+            fitted = fitted[:-1]
+
+        label = (fitted.rstrip() + suffix) if fitted else suffix
+
     c.setFillColorRGB(*_hex_to_rgb01(IBO_GREY_HEX))
-    c.setFont(PART_TITLE_FONT_NAME, PART_TITLE_FONT_SIZE_PT)
+    c.setFont(PART_TITLE_FONT_NAME, font_size)
     c.drawString(
         PART_TITLE_X_PT,
         PART_TITLE_BASELINE_Y_PT,
