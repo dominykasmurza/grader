@@ -146,24 +146,19 @@ PART_TITLE_X_PT = MARGIN_X_PT + ARUCO_SIZE_PT + 8
 
 PART_TITLE_BASELINE_Y_PT = (PDF_H_PT - MARGIN_Y_PT - ARUCO_SIZE_PT) + ARUCO_SIZE_PT / 2 - 5 - 2 * MM
 
-PART_TITLE_CROP_X0_PT = MARGIN_X_PT + ARUCO_SIZE_PT + 2 * MM
+SHEET_TITLE_CROP_X0_PT = MARGIN_X_PT + ARUCO_SIZE_PT + 2 * MM
 
-PART_TITLE_CROP_X1_PT = PDF_W_PT / 2 - QR_RESERVED_W_PT / 2 - 4 * MM
+SHEET_TITLE_CROP_X1_PT = PDF_W_PT / 2 - QR_RESERVED_W_PT / 2 - 4 * MM
 
-PART_TITLE_CROP_Y0_PT = PDF_H_PT - MARGIN_Y_PT - ARUCO_SIZE_PT - 6 * MM
+SHEET_TITLE_CROP_Y0_PT = PDF_H_PT - MARGIN_Y_PT - ARUCO_SIZE_PT - 6 * MM
 
-PART_TITLE_CROP_Y1_PT = PDF_H_PT - MARGIN_Y_PT + 6 * MM
+SHEET_TITLE_CROP_Y1_PT = PDF_H_PT - MARGIN_Y_PT + 6 * MM
 
-PRINTED_PART_LABELS = {
-    "A": "Theory Part A",
-    "B": "Theory Part B",
-}
+TITLE_OCR_LANGUAGE = "eng"
 
-PRINTED_PART_MIN_DARK_PIXELS = 40
+TITLE_OCR_PSM = 7
 
-PRINTED_PART_MIN_CONFIDENCE = 0.035
-
-_PRINTED_PART_REF_CACHE = {}
+TITLE_OCR_SCALE = 2.0
 
 SCORE_BY_CORRECT_COUNT = {
     0: 0.0,
@@ -173,7 +168,7 @@ SCORE_BY_CORRECT_COUNT = {
     4: 1.0,
 }
 
-ENABLE_PART_DETECTOR = True
+ENABLE_TITLE_OCR = False
 
 ENABLE_QR_READER = True
 
@@ -196,9 +191,9 @@ ALL_FILES_METRICS_FIELDS = [
     "ResolvedPart",
     "QRText",
     "QRStatus",
-    "PrintoutPart",
-    "PrintoutPartStatus",
-    "PrintoutPartConfidence",
+    "SheetTitleText",
+    "SheetTitleStatus",
+    "SheetTitleConfidence",
     "ArUcoMarkersDetected",
     "ArUcoMarkerNames",
     "ArUcoMissingMarkers",

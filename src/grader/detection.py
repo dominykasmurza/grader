@@ -14,14 +14,16 @@ from .grading import (
 )
 from .grading import normalize_part
 from .part_detection import (
-    detect_part_from_printout_warped,
     detect_qr_code,
-    disabled_printed_part_info,
     disabled_qr_info,
-    draw_printed_part_debug,
     draw_qr_debug,
     infer_part_from_filename_marker,
     infer_part_from_text,
+)
+from .title_detection import (
+    detect_sheet_title_text,
+    disabled_sheet_title_info,
+    draw_sheet_title_debug,
 )
 from .reporting import write_detailed_sheet_csv
 from .visualization import (
@@ -53,7 +55,8 @@ def _run_detection_on_image(
     source_name="",
     page_number=1,
     score_map=None,
-    enable_part_detector=ENABLE_PART_DETECTOR,
+    enable_title_ocr=ENABLE_TITLE_OCR,
+    title_ocr_language=TITLE_OCR_LANGUAGE,
     enable_qr_reader=ENABLE_QR_READER,
     add_timestamp=ADD_TIMESTAMP_TO_DETECTED,
     grader_text=GRADER_HEADER_TEXT,
@@ -68,21 +71,19 @@ def _run_detection_on_image(
     )
 
     qr_info = detect_qr_code(warped) if enable_qr_reader else disabled_qr_info(warped)
-    printed_part_info = (
-        detect_part_from_printout_warped(warped)
-        if enable_part_detector
-        else disabled_printed_part_info()
+    title_info = (
+        detect_sheet_title_text(warped, language=title_ocr_language)
+        if enable_title_ocr
+        else disabled_sheet_title_info(warped)
     )
 
-    # Explicit --part A/B always wins. In auto mode, literal filename markers
-    # A-1 and B-1 have first priority, independently of the optional readers.
-    # Printed-title and QR detection are then used as fallbacks when enabled.
+    # Explicit --part A/B always wins. In auto mode, filename markers have
+    # priority and QR contents are the only fallback. Visible title text is
+    # reporting metadata only and never affects the grading part.
     filename_part_info = infer_part_from_filename_marker(source_name)
     resolved_part = normalize_part(part)
     if resolved_part is None and str(part).strip().lower() == "auto":
         resolved_part = filename_part_info.get("part")
-        if resolved_part is None and enable_part_detector:
-            resolved_part = printed_part_info.get("part")
         if resolved_part is None and enable_qr_reader:
             resolved_part = infer_part_from_text(qr_info.get("text", ""))
 
@@ -144,8 +145,8 @@ def _run_detection_on_image(
 
     if enable_qr_reader:
         draw_qr_debug(debug, qr_info)
-    if enable_part_detector:
-        draw_printed_part_debug(debug, printed_part_info)
+    if enable_title_ocr:
+        draw_sheet_title_debug(debug, title_info)
 
     for row in centers:
         detected = []
@@ -288,7 +289,7 @@ def _run_detection_on_image(
         detected_rows=detected_rows,
         metrics=metrics,
         qr_info=qr_info,
-        printed_part_info=printed_part_info,
+        title_info=title_info,
         alignment_info=alignment_info,
         resolved_part=resolved_part,
         graded_rows=graded_rows,
@@ -320,15 +321,15 @@ def _run_detection_on_image(
     print(f"  Filename marker: {filename_part_info.get('status', '')}")
     print(f"  Resolved part  : {resolved_part or 'not resolved'}")
     print("Optional readers:")
-    print(f"  Part detector: {'enabled' if enable_part_detector else 'disabled'}")
+    print(f"  Title OCR    : {'enabled' if enable_title_ocr else 'disabled'}")
     print(f"  QR reader    : {'enabled' if enable_qr_reader else 'disabled'}")
     print(f"  Timestamp    : {'enabled' if add_timestamp else 'disabled'}")
     if enable_qr_reader:
         print(f"  QR status    : {qr_info.get('status', '')}")
         print(f"  QR text      : {qr_info.get('text', '')}")
-    if enable_part_detector:
-        print(f"  Printout part: {printed_part_info.get('part') or ''}")
-        print(f"  Part status  : {printed_part_info.get('status', '')}")
+    if enable_title_ocr:
+        print(f"  Title status : {title_info.get('status', '')}")
+        print(f"  Title text   : {title_info.get('text', '')}")
 
     print("Detection metrics:")
     print(f"  Total cells: {metrics['total_cells']}")
@@ -355,7 +356,7 @@ def _run_detection_on_image(
         graded_rows,
         grade_metrics,
         resolved_part,
-        printed_part_info,
+        title_info,
         alignment_info,
     )
 
@@ -368,7 +369,8 @@ def detect_marked_values_from_pdf(
     answer_key=None,
     part="auto",
     score_map=None,
-    enable_part_detector=ENABLE_PART_DETECTOR,
+    enable_title_ocr=ENABLE_TITLE_OCR,
+    title_ocr_language=TITLE_OCR_LANGUAGE,
     enable_qr_reader=ENABLE_QR_READER,
     add_timestamp=ADD_TIMESTAMP_TO_DETECTED,
     grader_text=GRADER_HEADER_TEXT,
@@ -393,7 +395,8 @@ def detect_marked_values_from_pdf(
         source_name=scanned_pdf_path,
         page_number=1,
         score_map=score_map,
-        enable_part_detector=enable_part_detector,
+        enable_title_ocr=enable_title_ocr,
+        title_ocr_language=title_ocr_language,
         enable_qr_reader=enable_qr_reader,
         add_timestamp=add_timestamp,
         grader_text=grader_text,
@@ -412,7 +415,8 @@ def detect_marked_values_from_image(
     answer_key=None,
     part="auto",
     score_map=None,
-    enable_part_detector=ENABLE_PART_DETECTOR,
+    enable_title_ocr=ENABLE_TITLE_OCR,
+    title_ocr_language=TITLE_OCR_LANGUAGE,
     enable_qr_reader=ENABLE_QR_READER,
     add_timestamp=ADD_TIMESTAMP_TO_DETECTED,
     grader_text=GRADER_HEADER_TEXT,
@@ -436,7 +440,8 @@ def detect_marked_values_from_image(
         source_name=image_path,
         page_number=1,
         score_map=score_map,
-        enable_part_detector=enable_part_detector,
+        enable_title_ocr=enable_title_ocr,
+        title_ocr_language=title_ocr_language,
         enable_qr_reader=enable_qr_reader,
         add_timestamp=add_timestamp,
         grader_text=grader_text,

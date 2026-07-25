@@ -18,7 +18,7 @@ def write_detailed_sheet_csv(
     detected_rows,
     metrics,
     qr_info,
-    printed_part_info,
+    title_info,
     alignment_info,
     resolved_part,
     graded_rows,
@@ -35,9 +35,9 @@ def write_detailed_sheet_csv(
         "Part",
         "QRText",
         "QRStatus",
-        "PrintoutPart",
-        "PrintoutPartStatus",
-        "PrintoutPartConfidence",
+        "SheetTitleText",
+        "SheetTitleStatus",
+        "SheetTitleConfidence",
         "ArUcoMarkersDetected",
         "ArUcoMarkerNames",
         "ArUcoMissingMarkers",
@@ -80,9 +80,9 @@ def write_detailed_sheet_csv(
         "Part": resolved_part or "",
         "QRText": qr_info.get("text", ""),
         "QRStatus": qr_info.get("status", ""),
-        "PrintoutPart": printed_part_info.get("part") or "",
-        "PrintoutPartStatus": printed_part_info.get("status", ""),
-        "PrintoutPartConfidence": printed_part_info.get("confidence", 0.0),
+        "SheetTitleText": title_info.get("text", ""),
+        "SheetTitleStatus": title_info.get("status", ""),
+        "SheetTitleConfidence": title_info.get("confidence", ""),
         "ArUcoMarkersDetected": alignment_info.get("marker_count", 0),
         "ArUcoMarkerNames": ";".join(alignment_info.get("marker_names", [])),
         "ArUcoMissingMarkers": ";".join(alignment_info.get("missing_marker_names", [])),
@@ -188,7 +188,7 @@ def _result_entry_to_metrics_row(entry, output_root):
         graded_rows,
         grade_metrics,
         resolved_part,
-        printed_part_info,
+        title_info,
         alignment_info,
     ) = entry["result"]
 
@@ -196,16 +196,15 @@ def _result_entry_to_metrics_row(entry, output_root):
     row["PartResolutionSource"] = determine_part_resolution_source(
         requested_part,
         filename_info,
-        printed_part_info,
         qr_info,
         resolved_part,
     )
     row["ResolvedPart"] = resolved_part or ""
     row["QRText"] = qr_info.get("text", "")
     row["QRStatus"] = qr_info.get("status", "")
-    row["PrintoutPart"] = printed_part_info.get("part") or ""
-    row["PrintoutPartStatus"] = printed_part_info.get("status", "")
-    row["PrintoutPartConfidence"] = printed_part_info.get("confidence", 0.0)
+    row["SheetTitleText"] = title_info.get("text", "")
+    row["SheetTitleStatus"] = title_info.get("status", "")
+    row["SheetTitleConfidence"] = title_info.get("confidence", "")
     row["ArUcoMarkersDetected"] = alignment_info.get("marker_count", 0)
     row["ArUcoMarkerNames"] = ";".join(alignment_info.get("marker_names", []))
     row["ArUcoMissingMarkers"] = ";".join(alignment_info.get("missing_marker_names", []))

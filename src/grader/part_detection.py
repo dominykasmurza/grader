@@ -1,18 +1,14 @@
-"""QR, printed-title, and filename-based theory-part resolution."""
+"""QR- and filename-based theory-part resolution."""
 
 import os
 import re
-import tempfile
+
 import cv2
 import numpy as np
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from pdf2image import convert_from_path
 
 from .config import *
 from .geometry import pdf_to_img_xy
 from .grading import normalize_part
-from .templates import draw_part_title_pdf
 
 
 def qr_reserved_rect_px(img_w, img_h, pad_pt=8 * MM):
@@ -96,184 +92,41 @@ def draw_qr_debug(debug, qr_info):
         pts = np.array(points, dtype=np.int32).reshape(-1, 1, 2)
         cv2.polylines(debug, [pts], True, IBO_GREEN_BGR, 3)
     label = f"QR: {qr_info.get('status', '')}"
-    cv2.putText(debug, label, (x1, max(20, y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, IBO_BLUE_BGR, 2)
-
-
-def crop_pdf_rect_from_image(image, x0_pt, y0_pt, x1_pt, y1_pt):
-    """Crop an image using PDF coordinates; PDF origin is bottom-left."""
-    img_h, img_w = image.shape[:2]
-    p1 = pdf_to_img_xy(x0_pt, y1_pt, img_w, img_h)
-    p2 = pdf_to_img_xy(x1_pt, y0_pt, img_w, img_h)
-
-    x0 = int(max(0, min(p1[0], p2[0])))
-    x1 = int(min(img_w, max(p1[0], p2[0])))
-    y0 = int(max(0, min(p1[1], p2[1])))
-    y1 = int(min(img_h, max(p1[1], p2[1])))
-
-    if x1 <= x0 or y1 <= y0:
-        return None
-    return image[y0:y1, x0:x1].copy()
-
-
-def crop_printed_part_title_region(warped_image):
-    return crop_pdf_rect_from_image(
-        warped_image,
-        PART_TITLE_CROP_X0_PT,
-        PART_TITLE_CROP_Y0_PT,
-        PART_TITLE_CROP_X1_PT,
-        PART_TITLE_CROP_Y1_PT,
-    )
-
-
-def text_crop_to_binary_mask(crop):
-    """Binary mask of dark text: 255 = dark printed text, 0 = background."""
-    if crop is None:
-        return None
-    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (3, 3), 0)
-    _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    return mask
-
-
-def render_reference_part_crop(part, target_img_w, target_img_h, target_crop_shape):
-    """Render the expected title for A/B and crop the same fixed title region."""
-    part = normalize_part(part)
-    if part not in {"A", "B"}:
-        raise ValueError(f"Unknown part for reference render: {part}")
-
-    cache_key = (part, target_img_w, target_img_h, target_crop_shape, DPI)
-    if cache_key in _PRINTED_PART_REF_CACHE:
-        return _PRINTED_PART_REF_CACHE[cache_key]
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        pdf_path = os.path.join(tmp_dir, f"_printed_part_ref_{part}.pdf")
-        c = canvas.Canvas(pdf_path, pagesize=A4)
-        draw_part_title_pdf(c, part)
-        c.save()
-
-        pages = convert_from_path(pdf_path, dpi=DPI, first_page=1, last_page=1)
-        if not pages:
-            raise RuntimeError(f"Could not render reference title for part {part}")
-
-        ref_rgb = np.array(pages[0])
-        ref_bgr = cv2.cvtColor(ref_rgb, cv2.COLOR_RGB2BGR)
-
-    if ref_bgr.shape[1] != target_img_w or ref_bgr.shape[0] != target_img_h:
-        ref_bgr = cv2.resize(ref_bgr, (target_img_w, target_img_h), interpolation=cv2.INTER_AREA)
-
-    ref_crop = crop_printed_part_title_region(ref_bgr)
-    ref_mask = text_crop_to_binary_mask(ref_crop)
-
-    if ref_mask is None:
-        raise RuntimeError(f"Could not crop reference title for part {part}")
-
-    if ref_mask.shape != target_crop_shape:
-        ref_mask = cv2.resize(ref_mask, (target_crop_shape[1], target_crop_shape[0]), interpolation=cv2.INTER_NEAREST)
-
-    _PRINTED_PART_REF_CACHE[cache_key] = ref_mask
-    return ref_mask
-
-
-def detect_part_from_printout_warped(warped_image):
-    """Detect Theory Part A/B from the printed title on the warped sheet.
-
-    This is template matching, not OCR. It compares the printed title region
-    against rendered references for "Theory Part A" and "Theory Part B".
-    """
-    title_crop = crop_printed_part_title_region(warped_image)
-    scan_mask = text_crop_to_binary_mask(title_crop)
-
-    if scan_mask is None or np.count_nonzero(scan_mask) < PRINTED_PART_MIN_DARK_PIXELS:
-        return {
-            "part": None,
-            "status": "no_title_detected",
-            "score_A": None,
-            "score_B": None,
-            "confidence": 0.0,
-        }
-
-    img_h, img_w = warped_image.shape[:2]
-    ref_a = render_reference_part_crop("A", img_w, img_h, scan_mask.shape)
-    ref_b = render_reference_part_crop("B", img_w, img_h, scan_mask.shape)
-
-    # Compare mostly where A/B differ so the common "Theory Part " prefix does not dominate.
-    diff_zone = cv2.absdiff(ref_a, ref_b)
-    kernel = np.ones((5, 5), np.uint8)
-    diff_zone = cv2.dilate(diff_zone, kernel, iterations=2)
-    diff_pixels = diff_zone > 0
-
-    if np.count_nonzero(diff_pixels) < 20:
-        diff_pixels = (ref_a > 0) | (ref_b > 0) | (scan_mask > 0)
-
-    scan01 = scan_mask.astype(np.float32) / 255.0
-    refa01 = ref_a.astype(np.float32) / 255.0
-    refb01 = ref_b.astype(np.float32) / 255.0
-
-    score_a = float(np.mean(np.abs(scan01[diff_pixels] - refa01[diff_pixels])))
-    score_b = float(np.mean(np.abs(scan01[diff_pixels] - refb01[diff_pixels])))
-
-    if score_a < score_b:
-        best_part = "A"
-        confidence = score_b - score_a
-    else:
-        best_part = "B"
-        confidence = score_a - score_b
-
-    if confidence < PRINTED_PART_MIN_CONFIDENCE:
-        return {
-            "part": None,
-            "status": "low_confidence",
-            "score_A": score_a,
-            "score_B": score_b,
-            "confidence": confidence,
-        }
-
-    return {
-        "part": best_part,
-        "status": "ok",
-        "score_A": score_a,
-        "score_B": score_b,
-        "confidence": confidence,
-    }
-
-
-def draw_printed_part_debug(debug, printed_part_info):
-    crop = crop_pdf_rect_from_image(
+    cv2.putText(
         debug,
-        PART_TITLE_CROP_X0_PT,
-        PART_TITLE_CROP_Y0_PT,
-        PART_TITLE_CROP_X1_PT,
-        PART_TITLE_CROP_Y1_PT,
+        label,
+        (x1, max(20, y1 - 10)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.7,
+        IBO_BLUE_BGR,
+        2,
     )
-    img_h, img_w = debug.shape[:2]
-    p1 = pdf_to_img_xy(PART_TITLE_CROP_X0_PT, PART_TITLE_CROP_Y1_PT, img_w, img_h)
-    p2 = pdf_to_img_xy(PART_TITLE_CROP_X1_PT, PART_TITLE_CROP_Y0_PT, img_w, img_h)
-    x0 = int(max(0, min(p1[0], p2[0])))
-    x1 = int(min(img_w, max(p1[0], p2[0])))
-    y0 = int(max(0, min(p1[1], p2[1])))
-    y1 = int(min(img_h, max(p1[1], p2[1])))
-    color = IBO_GREEN_BGR if printed_part_info.get("part") else IBO_YELLOW_BGR
-    cv2.rectangle(debug, (x0, y0), (x1, y1), color, 2)
-    label = f"Printed part: {printed_part_info.get('part') or printed_part_info.get('status', '')}"
-    cv2.putText(debug, label, (x0, max(20, y0 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
 
 def infer_part_from_text(*texts):
-    joined = " ".join(str(t or "") for t in texts).lower()
-    # Prefer explicit wording to avoid matching unrelated A/B letters.
-    if re.search(r"part[_\s-]*a|theory[_\s-]*a|\bA\d{2}\b", joined, re.I):
+    """Infer A/B only from machine-readable QR text.
+
+    Accepted examples include ``part=A``, ``part:A``, ``part_A``,
+    ``part-A``, ``Theory A``, and question-style codes such as ``A01``.
+    """
+    joined = " ".join(str(t or "") for t in texts)
+    if re.search(
+        r"\bpart\s*[:=_-]?\s*a\b|\btheory\s*[:=_-]?\s*a\b|\bA\d{2}\b",
+        joined,
+        re.I,
+    ):
         return "A"
-    if re.search(r"part[_\s-]*b|theory[_\s-]*b|\bB\d{2}\b", joined, re.I):
+    if re.search(
+        r"\bpart\s*[:=_-]?\s*b\b|\btheory\s*[:=_-]?\s*b\b|\bB\d{2}\b",
+        joined,
+        re.I,
+    ):
         return "B"
     return None
 
 
 def infer_part_from_filename_marker(path):
-    """Resolve the marking scheme from literal A-1/B-1 markers in a filename.
-
-    Matching is case-insensitive and uses only the base filename. In auto mode,
-    this result has priority over the printed-title detector and QR contents.
-    """
+    """Resolve the marking scheme from literal A-1/B-1 filename markers."""
     filename = os.path.basename(str(path or ""))
     upper_name = filename.upper()
     has_a = "A-1" in upper_name
@@ -307,11 +160,10 @@ def infer_part_from_filename_marker(path):
 def determine_part_resolution_source(
     requested_part,
     filename_part_info,
-    printed_part_info,
     qr_info,
     resolved_part,
 ):
-    """Describe which source supplied the final Theory Part A/B decision."""
+    """Describe which source supplied the final Part A/B decision."""
     explicit = normalize_part(requested_part)
     if explicit:
         return "explicit_cli_part"
@@ -319,8 +171,6 @@ def determine_part_resolution_source(
         return "unresolved"
     if filename_part_info.get("part") == resolved_part:
         return filename_part_info.get("status", "filename_marker")
-    if printed_part_info.get("part") == resolved_part:
-        return "printed_title"
     if infer_part_from_text(qr_info.get("text", "")) == resolved_part:
         return "qr_text"
     return "other"
@@ -333,14 +183,4 @@ def disabled_qr_info(warped):
         "status": "disabled",
         "points": None,
         "rect": qr_reserved_rect_px(img_w, img_h),
-    }
-
-
-def disabled_printed_part_info():
-    return {
-        "part": None,
-        "status": "disabled",
-        "score_A": None,
-        "score_B": None,
-        "confidence": 0.0,
     }

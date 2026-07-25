@@ -104,15 +104,24 @@ def build_arg_parser():
         help=(
             "Theory part used for grading. Explicit A/B always wins. With auto, "
             "filenames containing A-1 use Part A and filenames containing B-1 "
-            "use Part B; printed-title and QR detection are fallbacks."
+            "use Part B; QR contents are the fallback."
         ),
     )
     parser.add_argument(
-        "--disable-part-detector",
+        "--read-title-text",
         action="store_true",
         help=(
-            "Disable printed Theory Part A/B title detection. Explicit --part "
-            "and A-1/B-1 filename-marker resolution continue to work."
+            "Use OCR to read the customizable top-left sheet title and write it "
+            "to the detailed and all-files CSV reports. The title is never used "
+            "to resolve Part A/B."
+        ),
+    )
+    parser.add_argument(
+        "--title-ocr-language",
+        default=TITLE_OCR_LANGUAGE,
+        help=(
+            "Tesseract language code for --read-title-text. "
+            f"Default: {TITLE_OCR_LANGUAGE}"
         ),
     )
     parser.add_argument(
@@ -197,14 +206,12 @@ def main():
     answer_key = load_answer_key(args.answer_key) if args.answer_key else {}
     score_map = parse_score_map_arg(args.score_map)
 
-    enable_part_detector = (
-        ENABLE_PART_DETECTOR and not args.disable_part_detector
-    )
+    enable_title_ocr = ENABLE_TITLE_OCR or args.read_title_text
     enable_qr_reader = ENABLE_QR_READER and not args.disable_qr_reader
     add_timestamp = ADD_TIMESTAMP_TO_DETECTED or args.timestamp
 
     print(f"Score map: {score_map}")
-    print(f"Part detector: {'enabled' if enable_part_detector else 'disabled'}")
+    print(f"Title OCR: {'enabled' if enable_title_ocr else 'disabled'}")
     print(f"QR reader: {'enabled' if enable_qr_reader else 'disabled'}")
     print(f"Timestamp: {'enabled' if add_timestamp else 'disabled'}")
     print(f"Detected output: {args.detected_format}, scale={args.detected_scale}")
@@ -257,7 +264,8 @@ def main():
         "answer_key": answer_key,
         "part": args.part,
         "score_map": score_map,
-        "enable_part_detector": enable_part_detector,
+        "enable_title_ocr": enable_title_ocr,
+        "title_ocr_language": args.title_ocr_language,
         "enable_qr_reader": enable_qr_reader,
         "add_timestamp": add_timestamp,
         "grader_text": args.grader_label,
