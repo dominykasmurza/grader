@@ -20,9 +20,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/TODO_USERNAME/grader"
-Repository = "https://github.com/TODO_USERNAME/grader"
-Issues = "https://github.com/TODO_USERNAME/grader/issues"
+Homepage = "https://github.com/dominykasmurza/grader"
+Repository = "https://github.com/dominykasmurza/grader"
+Issues = "https://github.com/dominykasmurza/grader/issues"
 
 [project.scripts]
 grader = "grader.cli:main"
