@@ -95,13 +95,13 @@ candidate=LTU-S1&part=Form-Alpha
 Run automatic resolution with:
 
 ```bash
-grader scanned_sheets   --answer-key answer_key.xlsx   --part auto   --output-folder bulk_detected   --skip-template-generation
+grader scanned_sheets   --answer-key AnswerKey.xlsx   --part auto   --output-folder bulk_detected   --skip-template-generation
 ```
 
 Or override it explicitly with an exact answer-key label:
 
 ```bash
-grader scanned_sheets --answer-key answer_key.xlsx --part "Form-Alpha"
+grader scanned_sheets --answer-key AnswerKey.xlsx --part "Form-Alpha"
 ```
 
 Each question row in the detailed CSV contains `PartLabel`, along with `PartResolutionSource`, `PartResolutionStatus`, filename/QR matches, and `GradingStatus`.
